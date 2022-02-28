@@ -12,9 +12,10 @@ DATA SEGMENT PARA 'DATA'
 	; Time
 	TIME_AUX DB 0 ; Last ms time, check for time delta
 	
-	; Ball properties, DB because using 16 bit registers
+	; Ball properties, DW because using 16 bit registers
 	BALL_ORIGINAL_X DW 160 ; Initial position of the ball
 	BALL_ORIGINAL_Y DW 100
+	BALL_COLOR DW 03h
 	
 	BALL_X DW 0Ah
 	BALL_Y DW 0Ah
@@ -32,8 +33,10 @@ DATA SEGMENT PARA 'DATA'
 	PADDLE_WIDTH DW 05h;
 	PADDLE_HEIGHT DW 1Fh;
 	
+	PADDLE_VELOCITY DW 05h
+	
 	PADDLE_COLOR DW 03h
-	BALL_COLOR DW 03h
+	
 	
 	
 DATA ENDS
@@ -68,6 +71,7 @@ CODE SEGMENT PARA 'CODE'
 			CALL MOVE_BALL
 			CALL CLEAR_SCREEN
 			
+			CALL MOVE_PADDLES
 			CALL DRAW_PADDLES
 			
 			CALL DRAW_BALL
@@ -127,6 +131,127 @@ CODE SEGMENT PARA 'CODE'
 			RET
 	MOVE_BALL ENDP
 	
+	MOVE_PADDLES PROC NEAR
+		
+		; Left paddle
+		
+		CHECK_LEFT_PADDLE_MOVEMENT:
+			; Check if key is pressed
+			MOV AH, 01h
+			INT 16h
+			JZ CHECK_RIGHT_PADDLE_MOVEMENT
+			
+			; Check which key is pressed
+			MOV AH, 00h
+			INT 16h
+			
+			; Moving the paddle up
+			CMP AL, 77h ; 'w'
+			JE MOVE_LEFT_PADDLE_UP
+			CMP AL, 57h ; 'W'
+			JE MOVE_LEFT_PADDLE_UP
+			
+			; Moving the paddle down
+			CMP AL, 73h ; 's'
+			JE MOVE_LEFT_PADDLE_DOWN
+			CMP AL, 53h ; 'S'
+			JE MOVE_LEFT_PADDLE_DOWN
+			JMP CHECK_RIGHT_PADDLE_MOVEMENT
+		
+			MOVE_LEFT_PADDLE_UP:
+				mov AX, PADDLE_VELOCITY
+				SUB PADDLE_LEFT_Y, AX
+				
+				; Check boundaries
+				MOV AX, WINDOW_BOUNDS
+				CMP PADDLE_LEFT_Y, AX
+				JL FIX_PADDLE_LEFT_TOP_POSITION
+				; If boundaries are okay
+				JMP CHECK_RIGHT_PADDLE_MOVEMENT
+				
+				; If boundaries are not okay
+				FIX_PADDLE_LEFT_TOP_POSITION:
+					MOV PADDLE_LEFT_Y, AX
+					JMP CHECK_RIGHT_PADDLE_MOVEMENT
+				
+			MOVE_LEFT_PADDLE_DOWN:
+				mov AX, PADDLE_VELOCITY
+				ADD PADDLE_LEFT_Y, AX
+				
+				; Check boundaries
+				MOV AX, WINDOW_HEIGHT
+				SUB AX, WINDOW_BOUNDS
+				SUB AX, PADDLE_HEIGHT
+				CMP PADDLE_LEFT_Y, AX
+				JG FIX_PADDLE_LEFT_BOTTON_POSITION
+				; If boundaries are okay
+				JMP CHECK_RIGHT_PADDLE_MOVEMENT
+				
+				; If boundaries are not okay
+				FIX_PADDLE_LEFT_BOTTON_POSITION:
+					MOV PADDLE_LEFT_Y, AX
+					JMP CHECK_RIGHT_PADDLE_MOVEMENT
+		
+		
+		; Right paddle
+		CHECK_RIGHT_PADDLE_MOVEMENT:
+			
+			; Moving the paddle up
+			CMP AL, 6Fh ; 'o'
+			JE MOVE_RIGHT_PADDLE_UP
+			CMP AL, 4Fh ; 'O'
+			JE MOVE_RIGHT_PADDLE_UP
+			
+			; Moving the paddle down
+			CMP AL, 6Ch ; 'l'
+			JE MOVE_RIGHT_PADDLE_DOWN
+			CMP AL, 4Ch ; 'L'
+			JE MOVE_RIGHT_PADDLE_DOWN
+			JMP END_PADDLE_FUNC
+		
+			MOVE_RIGHT_PADDLE_UP:
+				mov BALL_X, 100
+				mov BALL_Y, 100
+				
+				mov AX, PADDLE_VELOCITY
+				SUB PADDLE_RIGHT_Y, AX
+				
+				; Check boundaries
+				MOV AX, WINDOW_BOUNDS
+				CMP PADDLE_RIGHT_Y, AX
+				JL FIX_PADDLE_RIGHT_TOP_POSITION
+				; If boundaries are okay
+				JMP END_PADDLE_FUNC
+				
+				; If boundaries are not okay
+				FIX_PADDLE_RIGHT_TOP_POSITION:
+					MOV AX, WINDOW_BOUNDS
+					MOV PADDLE_RIGHT_Y, AX
+					JMP END_PADDLE_FUNC
+				
+			MOVE_RIGHT_PADDLE_DOWN:
+				mov AX, PADDLE_VELOCITY
+				ADD PADDLE_RIGHT_Y, AX
+				
+				; Check boundaries
+				MOV AX, WINDOW_HEIGHT
+				SUB AX, WINDOW_BOUNDS
+				SUB AX, PADDLE_HEIGHT
+				CMP PADDLE_RIGHT_Y, AX
+				JG FIX_PADDLE_RIGHT_BOTTON_POSITION
+				; If boundaries are okay
+				JMP END_PADDLE_FUNC
+				
+				; If boundaries are not okay
+				FIX_PADDLE_RIGHT_BOTTON_POSITION:
+					MOV PADDLE_RIGHT_Y, AX
+					JMP END_PADDLE_FUNC
+		
+		
+		END_PADDLE_FUNC:
+			RET
+	MOVE_PADDLES ENDP
+	
 	RESET_BALL_POSITION PROC NEAR
 		
 		MOV AX, BALL_ORIGINAL_X
@@ -153,7 +278,7 @@ CODE SEGMENT PARA 'CODE'
 			COL:
 			; Draw a pixel
 				MOV AH, 0Ch
-				MOV AL, 03h ; Cyan
+				MOV AL, 0Fh ; Cyan
 				MOV BH, 00h
 				INT 10h
 				
@@ -187,7 +312,7 @@ CODE SEGMENT PARA 'CODE'
 			LEFT_PADDLE_COL:
 			; Draw a pixel
 				MOV AH, 0Ch
-				MOV AL, 03h ; Cyan
+				MOV AL, 0Fh ; Cyan
 				MOV BH, 00h
 				INT 10h
 				
@@ -216,7 +341,7 @@ CODE SEGMENT PARA 'CODE'
 			RIGHT_PADDLE_COL:
 			; Draw a pixel
 				MOV AH, 0Ch
-				MOV AL, 03h ; Cyan
+				MOV AL, 0Fh ; Cyan
 				MOV BH, 00h
 				INT 10h
 				
