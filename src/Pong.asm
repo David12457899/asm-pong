@@ -4,6 +4,13 @@ STACK ENDS
 
 DATA SEGMENT PARA 'DATA'
 	
+	; Game
+	MAX_GAME_POINTS DB 5
+	
+	; Players
+	TEXT_PLAYER_ONE_POINTS DB '0', '$'
+	TEXT_PLAYER_TWO_POINTS DB '0', '$'
+	
 	; Screen dimensions
 	WINDOW_WIDTH DW 320 ; 320 pixels
 	WINDOW_HEIGHT DW 200 ; 200 pixels
@@ -70,13 +77,16 @@ CODE SEGMENT PARA 'CODE'
 		GAME_FRAME:
 			MOV TIME_AUX, DL ; Saving time for later checking
 			
-			CALL MOVE_BALL
 			CALL CLEAR_SCREEN
+			
+			CALL MOVE_BALL
+			CALL DRAW_BALL
 			
 			CALL MOVE_PADDLES
 			CALL DRAW_PADDLES
 			
-			CALL DRAW_BALL
+			CALL DRAW_UI
+			
 			JMP CHECK_TIME
 		
 		; Print A for debugging
@@ -97,18 +107,38 @@ CODE SEGMENT PARA 'CODE'
 			
 			; Check x boundaries
 			CMP BALL_X, 00h
-			JL RESET_POSITION
+			JL GIVE_POINT_TO_PLAYER_TWO
 			
 			MOV AX, WINDOW_WIDTH
 			SUB AX, BALL_SIZE
 			SUB AX, WINDOW_BOUNDS
 			CMP BALL_X, AX
-			JG RESET_POSITION
+			JG GIVE_POINT_TO_PLAYER_ONE
 			JMP MOVE_Y
-			
-		RESET_POSITION:
+		
+		; Increment points of round winner
+		GIVE_POINT_TO_PLAYER_ONE:
+			INC PADDLE_LEFT_POINTS
 			CALL RESET_BALL_POSITION
-			JMP END_FUNC
+			
+			; Check if player 1 has reached max points
+			CMP PADDLE_LEFT_POINTS, 5 ; comparing to the max game points
+			JGE GAME_OVER
+			RET
+			
+		GIVE_POINT_TO_PLAYER_TWO:
+			INC PADDLE_RIGHT_POINTS
+			CALL RESET_BALL_POSITION
+			
+			; Check if player 2 has reached max points
+			CMP PADDLE_RIGHT_POINTS, 5 ; comparing to the max game points
+			JGE GAME_OVER
+			RET
+		
+		GAME_OVER:
+			MOV PADDLE_LEFT_POINTS, 00h
+			MOV PADDLE_RIGHT_POINTS, 00h
+			RET
 		
 		MOVE_Y:
 			; Y AXIS
@@ -419,6 +449,39 @@ CODE SEGMENT PARA 'CODE'
 		
 		RET
 	DRAW_PADDLES ENDP
+	
+	DRAW_UI PROC NEAR
+	
+		; Draw the points of the left player
+		
+		; Move cursor to wanted position
+		MOV AH, 02h
+		MOV BH, 00h
+		MOV DH, 04h
+		MOV DL, 06h
+		INT 10h
+		
+		; Draw the text
+		MOV AH, 09h
+		LEA DX, TEXT_PLAYER_ONE_POINTS
+		INT 21h
+		
+		; Draw the points of the right player
+		
+		; Move cursor to wanted position
+		MOV AH, 02h
+		MOV BH, 00h
+		MOV DH, 04h
+		MOV DL, 1Fh
+		INT 10h
+		
+		; Draw the text
+		MOV AH, 09h
+		LEA DX, TEXT_PLAYER_TWO_POINTS
+		INT 21h
+		
+		RET
+	DRAW_UI ENDP
 	
 	CLEAR_SCREEN PROC NEAR
 	
