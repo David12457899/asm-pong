@@ -22,6 +22,20 @@ DATA SEGMENT PARA 'DATA'
 	BALL_VELOCITY_X DW 05h
 	BALL_VELOCITY_Y DW 02h
 	
+	; Paddle properties
+	PADDLE_LEFT_X DW 0Ah;
+	PADDLE_LEFT_Y DW 0Ah;
+	
+	PADDLE_RIGHT_X DW 130h;
+	PADDLE_RIGHT_Y DW 0Ah;
+	
+	PADDLE_WIDTH DW 05h;
+	PADDLE_HEIGHT DW 1Fh;
+	
+	PADDLE_COLOR DW 03h
+	BALL_COLOR DW 03h
+	
+	
 DATA ENDS
 
 CODE SEGMENT PARA 'CODE'
@@ -53,6 +67,8 @@ CODE SEGMENT PARA 'CODE'
 			
 			CALL MOVE_BALL
 			CALL CLEAR_SCREEN
+			
+			CALL DRAW_PADDLES
 			
 			CALL DRAW_BALL
 			JMP CHECK_TIME
@@ -127,7 +143,7 @@ CODE SEGMENT PARA 'CODE'
 		MOV CX, BALL_X ; Start X
 		MOV DX, BALL_Y ; Start Y
 		
-		; For the loop
+		; loop
 		mov SI, 0
 		mov DI, 0
 		
@@ -154,6 +170,68 @@ CODE SEGMENT PARA 'CODE'
 		
 		RET
 	DRAW_BALL ENDP
+	
+	DRAW_PADDLES PROC NEAR
+		
+		; Left paddle
+		MOV CX, PADDLE_LEFT_X ; Start X
+		MOV DX, PADDLE_LEFT_Y ; Start Y
+		
+		; loop
+		mov SI, 0
+		mov DI, 0
+		
+		LEFT_PADDLE_ROW:
+			MOV CX, PADDLE_LEFT_X
+			MOV SI, 0
+			LEFT_PADDLE_COL:
+			; Draw a pixel
+				MOV AH, 0Ch
+				MOV AL, 03h ; Cyan
+				MOV BH, 00h
+				INT 10h
+				
+				INC CX
+				INC SI
+				CMP SI, PADDLE_WIDTH
+				JB LEFT_PADDLE_COL
+			
+			INC DX
+			INC DI
+			CMP DI, PADDLE_HEIGHT
+			JB LEFT_PADDLE_ROW
+		
+		; Right paddle
+		
+		MOV CX, PADDLE_RIGHT_X ; Start X
+		MOV DX, PADDLE_RIGHT_Y ; Start Y
+		
+		; loop
+		mov SI, 0
+		mov DI, 0
+		
+		RIGHT_PADDLE_ROW:
+			MOV CX, PADDLE_RIGHT_X
+			MOV SI, 0
+			RIGHT_PADDLE_COL:
+			; Draw a pixel
+				MOV AH, 0Ch
+				MOV AL, 03h ; Cyan
+				MOV BH, 00h
+				INT 10h
+				
+				INC CX
+				INC SI
+				CMP SI, PADDLE_WIDTH
+				JB RIGHT_PADDLE_COL
+			
+			INC DX
+			INC DI
+			CMP DI, PADDLE_HEIGHT
+			JB RIGHT_PADDLE_ROW
+		
+		RET
+	DRAW_PADDLES ENDP
 	
 	CLEAR_SCREEN PROC NEAR
 	
