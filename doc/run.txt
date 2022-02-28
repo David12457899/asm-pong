@@ -1,0 +1,14 @@
+1. open DOSBox
+
+ONLY REQUIRED IF NOT CONFIGURED IN DOSBox settings
+	2. mount c C:\Users\david\Desktop\programming\Projects-before-git\asm-pong
+	3. c:
+
+4. masm /a pong.asm
+
+IF NO ERRORS / WARNINGS:	
+	5. link pong (name of the file)
+	6. ; (semicolon)
+
+TO RUN IT:
+	7. pong
