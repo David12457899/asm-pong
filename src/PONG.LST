@@ -1,0 +1,672 @@
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-1
+
+
+ 0000				STACK SEGMENT PARA STACK 
+ 0000  0040[				DB 64 DUP(' ') ; Fills stack with 64 em
+				pty spaces 
+	   20			
+			 ]	
+				
+ 0040				STACK ENDS 
+				 
+ 0000				DATA SEGMENT PARA 'DATA' 
+					 
+					; Screen dimensions 
+ 0000  0140				WINDOW_WIDTH DW 320 ; 320 pixels 
+ 0002  00C8				WINDOW_HEIGHT DW 200 ; 200 pixels 
+ 0004  0006				WINDOW_BOUNDS DW 6 ; arbitrary, to chec
+				k collisions early 
+					 
+					; Time 
+ 0006  00				TIME_AUX DB 0 ; Last ms time, check for
+				 time delta 
+					 
+					; Ball properties, DW because using 16 
+				bit registers 
+ 0007  00A0				BALL_ORIGINAL_X DW 160 ; Initial positi
+				on of the ball 
+ 0009  0064				BALL_ORIGINAL_Y DW 100 
+ 000B  0003				BALL_COLOR DW 03h 
+					 
+ 000D  000A				BALL_X DW 0Ah 
+ 000F  000A				BALL_Y DW 0Ah 
+ 0011  0004				BALL_SIZE DW 04h ; N x N 
+ 0013  0005				BALL_VELOCITY_X DW 05h 
+ 0015  0002				BALL_VELOCITY_Y DW 02h 
+					 
+					; Paddle properties 
+ 0017  000A				PADDLE_LEFT_X DW 0Ah; 
+ 0019  000A				PADDLE_LEFT_Y DW 0Ah; 
+					 
+ 001B  0130				PADDLE_RIGHT_X DW 130h; 
+ 001D  000A				PADDLE_RIGHT_Y DW 0Ah; 
+					 
+ 001F  0005				PADDLE_WIDTH DW 05h; 
+ 0021  001F				PADDLE_HEIGHT DW 1Fh; 
+					 
+ 0023  0005				PADDLE_VELOCITY DW 05h 
+					 
+ 0025  0003				PADDLE_COLOR DW 03h 
+					 
+					 
+					 
+ 0027				DATA ENDS 
+				 
+ 0000				CODE SEGMENT PARA 'CODE' 
+					 
+ 0000					MAIN PROC FAR 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-2
+
+
+					 
+					; Moves DATA to the data segment 
+					ASSUME CS:CODE, DS:DATA, SS:STACK 
+ 0000  1E				PUSH DS			 
+ 0001  33 C0				XOR AX, AX 
+ 0003  50				PUSH AX 
+ 0004  B8 ---- R			MOV AX, DATA 
+ 0007  8E D8				mov DS, AX 
+ 0009  58				POP AX 
+ 000A  58				POP AX 
+					 
+ 000B  E8 0231 R				CALL CLEAR_SCREEN 
+						 
+ 000E						CHECK_TIME: 
+							; Getting the system ti
+				me 
+ 000E  B4 2C						MOV AH, 2Ch 
+ 0010  CD 21						INT 21h 
+						 
+ 0012  3A 16 0006 R					CMP DL, TIME_AUX 
+ 0016  74 F6						JE CHECK_TIME 
+						 
+ 0018						GAME_FRAME: 
+ 0018  88 16 0006 R					MOV TIME_AUX, DL ; Savi
+				ng time for later checking 
+							 
+ 001C  E8 002E R					CALL MOVE_BALL 
+ 001F  E8 0231 R					CALL CLEAR_SCREEN 
+							 
+ 0022  E8 00F3 R					CALL MOVE_PADDLES 
+ 0025  E8 01D6 R					CALL DRAW_PADDLES 
+							 
+ 0028  E8 01A8 R					CALL DRAW_BALL 
+ 002B  EB E1						JMP CHECK_TIME 
+						 
+						; Print A for debugging 
+						;MOV DL, 'A' 
+						;mov AH, 6h 
+						;INT 21h 
+						 
+ 002D  CB					RET 
+ 002E					MAIN ENDP 
+					 
+ 002E					MOVE_BALL PROC NEAR 
+						; Move the ball 
+						 
+ 002E						MOVE_X: 
+							; X axis 
+ 002E  A1 0013 R					MOV AX, BALL_VELOCITY_X
+				 
+ 0031  01 06 000D R					ADD BALL_X, AX 
+							 
+							; Check x boundaries 
+ 0035  83 3E 000D R 00					CMP BALL_X, 00h 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-3
+
+
+ 003A  7C E5						JL RESET_POSITION 
+pong.asm(98): error A2053: Jump out of range by 42 byte(s)
+							 
+ 003C  A1 0000 R					MOV AX, WINDOW_WIDTH 
+ 003F  2B 06 0011 R					SUB AX, BALL_SIZE 
+ 0043  2B 06 0004 R					SUB AX, WINDOW_BOUNDS 
+ 0047  39 06 000D R					CMP BALL_X, AX 
+ 004B  7F E5						JG RESET_POSITION 
+pong.asm(104): error A2053: Jump out of range by 25 byte(s)
+						 
+ 004D						MOVE_Y: 
+							; Y AXIS 
+ 004D  A1 0015 R					MOV AX, BALL_VELOCITY_Y
+				 
+ 0050  01 06 000F R					ADD BALL_Y, AX 
+							 
+							; check y boundries 
+ 0054  83 3E 000F R 00					CMP BALL_Y, 00h 
+ 0059  7C EB						JL NEG_VELOCITY_Y 
+pong.asm(113): error A2053: Jump out of range by 17 byte(s)
+							 
+ 005B  A1 0002 R					MOV AX, WINDOW_HEIGHT 
+ 005E  2B 06 0011 R					SUB AX, BALL_SIZE 
+ 0062  2B 06 0004 R					SUB AX, WINDOW_BOUNDS 
+ 0066  39 06 000F R					CMP BALL_Y, AX 
+ 006A  7F 7F						JG NEG_VELOCITY_Y 
+						 
+ 006C						CHECK_COLLISION_WITH_RIGHT_PADD
+				LE: 
+							; Check right paddle co
+				llision 
+ 006C  A1 000D R					MOV AX, BALL_X 
+ 006F  03 06 0011 R					ADD AX, BALL_SIZE 
+ 0073  3B 06 001B R					CMP AX, PADDLE_RIGHT_X 
+							; No collision 
+ 0077  7E 2C						JNG CHECK_COLLISION_WIT
+				H_LEFT_PADDLE 
+							 
+ 0079  A1 001B R					MOV AX, PADDLE_RIGHT_X 
+ 007C  03 06 001F R					ADD AX, PADDLE_WIDTH 
+ 0080  39 06 000D R					CMP BALL_X, AX 
+							; No collision 
+ 0084  7D 1F						JNL CHECK_COLLISION_WIT
+				H_LEFT_PADDLE 
+							 
+ 0086  A1 000F R					MOV AX, BALL_Y 
+ 0089  03 06 0011 R					ADD AX, BALL_SIZE 
+ 008D  3B 06 001D R					CMP AX, PADDLE_RIGHT_Y 
+ 0091  7E 12						JNG CHECK_COLLISION_WIT
+				H_LEFT_PADDLE 
+							 
+ 0093  A1 001D R					MOV AX, PADDLE_RIGHT_Y 
+ 0096  03 06 0021 R					ADD AX, PADDLE_HEIGHT 
+ 009A  39 06 000F R					CMP BALL_Y, AX 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-4
+
+
+							; No collision 
+ 009E  7D 05						JNL CHECK_COLLISION_WIT
+				H_LEFT_PADDLE 
+						 
+							 
+							; Collision detected 
+ 00A0  F7 1E 0013 R					NEG BALL_VELOCITY_X 
+ 00A4  C3						RET 
+							 
+						; Check left paddle collision 
+ 00A5						CHECK_COLLISION_WITH_LEFT_PADDL
+				E: 
+							; Check right paddle co
+				llision 
+ 00A5  A1 000D R					MOV AX, BALL_X 
+ 00A8  03 06 0011 R					ADD AX, BALL_SIZE 
+ 00AC  3B 06 001B R					CMP AX, PADDLE_RIGHT_X 
+							; No collision 
+ 00B0  EB 40 90						JMP END_FUNC 
+							 
+ 00B3  A1 001B R					MOV AX, PADDLE_RIGHT_X 
+ 00B6  03 06 001F R					ADD AX, PADDLE_WIDTH 
+ 00BA  39 06 000D R					CMP BALL_X, AX 
+							; No collision 
+ 00BE  EB 32 90						JMP END_FUNC 
+							 
+ 00C1  A1 000F R					MOV AX, BALL_Y 
+ 00C4  03 06 0011 R					ADD AX, BALL_SIZE 
+ 00C8  3B 06 001D R					CMP AX, PADDLE_RIGHT_Y 
+ 00CC  EB 24 90						JMP END_FUNC 
+							 
+ 00CF  A1 001D R					MOV AX, PADDLE_RIGHT_Y 
+ 00D2  03 06 0021 R					ADD AX, PADDLE_HEIGHT 
+ 00D6  39 06 000F R					CMP BALL_Y, AX 
+							; No collision 
+ 00DA  EB 16 90						JMP END_FUNC 
+						 
+							 
+							; Collision detected 
+ 00DD  F7 1E 0013 R					NEG BALL_VELOCITY_X 
+ 00E1  C3						RET 
+							 
+ 00E2  EB 0E 90					JMP END_FUNC 
+						 
+ 00E5						RESET_POSITION: 
+ 00E5  E8 019B R					CALL RESET_BALL_POSITIO
+				N 
+ 00E8  EB 08 90						JMP END_FUNC 
+ 00EB						NEG_VELOCITY_Y: 
+ 00EB  F7 1E 0015 R					NEG BALL_VELOCITY_Y 
+ 00EF  EB 01 90						JMP END_FUNC 
+						 
+ 00F2						END_FUNC: 
+ 00F2  C3						RET 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-5
+
+
+ 00F3					MOVE_BALL ENDP 
+					 
+ 00F3					MOVE_PADDLES PROC NEAR 
+						 
+						; Check if key is pressed 
+ 00F3  B4 01					MOV AH, 01h 
+ 00F5  CD 16					INT 16h 
+ 00F7  74 51					JZ CHECK_RIGHT_PADDLE_MOVEMENT 
+						 
+						; Check which key is pressed 
+ 00F9  B4 00					MOV AH, 00h 
+ 00FB  CD 16					INT 16h 
+						 
+						; Left paddle 
+ 00FD						CHECK_LEFT_PADDLE_MOVEMENT: 
+							; Moving the paddle up 
+ 00FD  3C 77						CMP AL, 77h ; 'w' 
+ 00FF  74 0F						JE MOVE_LEFT_PADDLE_UP 
+ 0101  3C 57						CMP AL, 57h ; 'W' 
+ 0103  74 0B						JE MOVE_LEFT_PADDLE_UP 
+							 
+							; Moving the paddle dow
+				n 
+ 0105  3C 73						CMP AL, 73h ; 's' 
+ 0107  74 20						JE MOVE_LEFT_PADDLE_DOW
+				N 
+ 0109  3C 53						CMP AL, 53h ; 'S' 
+ 010B  74 1C						JE MOVE_LEFT_PADDLE_DOW
+				N 
+ 010D  EB 3B 90						JMP CHECK_RIGHT_PADDLE_
+				MOVEMENT 
+						 
+ 0110							MOVE_LEFT_PADDLE_UP: 
+ 0110  A1 0023 R						mov AX, PADDLE_
+				VELOCITY 
+ 0113  29 06 0019 R						SUB PADDLE_LEFT
+				_Y, AX 
+								 
+								; Check boundar
+				ies 
+ 0117  A1 0004 R						MOV AX, WINDOW_
+				BOUNDS 
+ 011A  39 06 0019 R						CMP PADDLE_LEFT
+				_Y, AX 
+ 011E  7C 03							JL FIX_PADDLE_L
+				EFT_TOP_POSITION 
+								; If boundaries
+				 are okay 
+ 0120  EB 28 90							JMP CHECK_RIGHT
+				_PADDLE_MOVEMENT 
+								 
+								; If boundaries
+				 are not okay 
+ 0123								FIX_PADDLE_LEFT
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-6
+
+
+				_TOP_POSITION: 
+ 0123  A3 0019 R							MOV PAD
+				DLE_LEFT_Y, AX 
+ 0126  EB 22 90								JMP CHE
+				CK_RIGHT_PADDLE_MOVEMENT 
+								 
+ 0129							MOVE_LEFT_PADDLE_DOWN: 
+ 0129  A1 0023 R						mov AX, PADDLE_
+				VELOCITY 
+ 012C  01 06 0019 R						ADD PADDLE_LEFT
+				_Y, AX 
+								 
+								; Check boundar
+				ies 
+ 0130  A1 0002 R						MOV AX, WINDOW_
+				HEIGHT 
+ 0133  2B 06 0004 R						SUB AX, WINDOW_
+				BOUNDS 
+ 0137  2B 06 0021 R						SUB AX, PADDLE_
+				HEIGHT 
+ 013B  39 06 0019 R						CMP PADDLE_LEFT
+				_Y, AX 
+ 013F  7F 03							JG FIX_PADDLE_L
+				EFT_BOTTON_POSITION 
+								; If boundaries
+				 are okay 
+ 0141  EB 07 90							JMP CHECK_RIGHT
+				_PADDLE_MOVEMENT 
+								 
+								; If boundaries
+				 are not okay 
+ 0144								FIX_PADDLE_LEFT
+				_BOTTON_POSITION: 
+ 0144  A3 0019 R							MOV PAD
+				DLE_LEFT_Y, AX 
+ 0147  EB 01 90								JMP CHE
+				CK_RIGHT_PADDLE_MOVEMENT 
+						 
+						 
+						; Right paddle 
+ 014A						CHECK_RIGHT_PADDLE_MOVEMENT: 
+							 
+							; Moving the paddle up 
+ 014A  3C 6F						CMP AL, 6Fh ; 'o' 
+ 014C  74 0F						JE MOVE_RIGHT_PADDLE_UP
+				 
+ 014E  3C 4F						CMP AL, 4Fh ; 'O' 
+ 0150  74 0B						JE MOVE_RIGHT_PADDLE_UP
+				 
+							 
+							; Moving the paddle dow
+				n 
+ 0152  3C 6C						CMP AL, 6Ch ; 'l' 
+ 0154  74 23						JE MOVE_RIGHT_PADDLE_DO
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-7
+
+
+				WN 
+ 0156  3C 4C						CMP AL, 4Ch ; 'L' 
+ 0158  74 1F						JE MOVE_RIGHT_PADDLE_DO
+				WN 
+ 015A  EB 3E 90						JMP END_PADDLE_FUNC 
+						 
+ 015D							MOVE_RIGHT_PADDLE_UP: 
+								 
+ 015D  A1 0023 R						mov AX, PADDLE_
+				VELOCITY 
+ 0160  29 06 001D R						SUB PADDLE_RIGH
+				T_Y, AX 
+								 
+								; Check boundar
+				ies 
+ 0164  A1 0004 R						MOV AX, WINDOW_
+				BOUNDS 
+ 0167  39 06 001D R						CMP PADDLE_RIGH
+				T_Y, AX 
+ 016B  7C 03							JL FIX_PADDLE_R
+				IGHT_TOP_POSITION 
+								; If boundaries
+				 are okay 
+ 016D  EB 2B 90							JMP END_PADDLE_
+				FUNC 
+								 
+								; If boundaries
+				 are not okay 
+ 0170								FIX_PADDLE_RIGH
+				T_TOP_POSITION: 
+ 0170  A1 0004 R							MOV AX,
+				 WINDOW_BOUNDS 
+ 0173  A3 001D R							MOV PAD
+				DLE_RIGHT_Y, AX 
+ 0176  EB 22 90								JMP END
+				_PADDLE_FUNC 
+								 
+ 0179							MOVE_RIGHT_PADDLE_DOWN:
+				 
+ 0179  A1 0023 R						mov AX, PADDLE_
+				VELOCITY 
+ 017C  01 06 001D R						ADD PADDLE_RIGH
+				T_Y, AX 
+								 
+								; Check boundar
+				ies 
+ 0180  A1 0002 R						MOV AX, WINDOW_
+				HEIGHT 
+ 0183  2B 06 0004 R						SUB AX, WINDOW_
+				BOUNDS 
+ 0187  2B 06 0021 R						SUB AX, PADDLE_
+				HEIGHT 
+ 018B  39 06 001D R						CMP PADDLE_RIGH
+				T_Y, AX 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-8
+
+
+ 018F  7F 03							JG FIX_PADDLE_R
+				IGHT_BOTTON_POSITION 
+								; If boundaries
+				 are okay 
+ 0191  EB 07 90							JMP END_PADDLE_
+				FUNC 
+								 
+								; If boundaries
+				 are not okay 
+ 0194								FIX_PADDLE_RIGH
+				T_BOTTON_POSITION: 
+ 0194  A3 001D R							MOV PAD
+				DLE_RIGHT_Y, AX 
+ 0197  EB 01 90								JMP END
+				_PADDLE_FUNC 
+						 
+						 
+ 019A						END_PADDLE_FUNC: 
+ 019A  C3						RET 
+ 019B					MOVE_PADDLES ENDP 
+					 
+ 019B					RESET_BALL_POSITION PROC NEAR 
+						 
+ 019B  A1 0007 R				MOV AX, BALL_ORIGINAL_X 
+ 019E  A3 000D R				MOV BALL_X, AX 
+						 
+ 01A1  A1 0009 R				MOV AX, BALL_ORIGINAL_Y 
+ 01A4  A3 000F R				MOV BALL_Y, AX 
+						 
+ 01A7  C3					RET 
+ 01A8					RESET_BALL_POSITION ENDP 
+					 
+ 01A8					DRAW_BALL PROC NEAR 
+						 
+ 01A8  8B 0E 000D R				MOV CX, BALL_X ; Start X 
+ 01AC  8B 16 000F R				MOV DX, BALL_Y ; Start Y 
+						 
+						; loop 
+ 01B0  BE 0000					mov SI, 0 
+ 01B3  BF 0000					mov DI, 0 
+						 
+ 01B6						ROW: 
+ 01B6  8B 0E 000D R					MOV CX, BALL_X 
+ 01BA  BE 0000						MOV SI, 0 
+ 01BD							COL: 
+							; Draw a pixel 
+ 01BD  B4 0C							MOV AH, 0Ch 
+ 01BF  B0 0F							MOV AL, 0Fh ; C
+				yan 
+ 01C1  B7 00							MOV BH, 00h 
+ 01C3  CD 10							INT 10h 
+								 
+ 01C5  41							INC CX 
+ 01C6  46							INC SI 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-9
+
+
+ 01C7  3B 36 0011 R						CMP SI, BALL_SI
+				ZE 
+ 01CB  72 F0							JB COL 
+							 
+ 01CD  42						INC DX 
+ 01CE  47						INC DI 
+ 01CF  3B 3E 0011 R					CMP DI, BALL_SIZE 
+ 01D3  72 E1						JB ROW 
+						 
+						 
+ 01D5  C3					RET 
+ 01D6					DRAW_BALL ENDP 
+					 
+ 01D6					DRAW_PADDLES PROC NEAR 
+						 
+						; Left paddle 
+ 01D6  8B 0E 0017 R				MOV CX, PADDLE_LEFT_X ; Start X
+				 
+ 01DA  8B 16 0019 R				MOV DX, PADDLE_LEFT_Y ; Start Y
+				 
+						 
+						; loop 
+ 01DE  BE 0000					mov SI, 0 
+ 01E1  BF 0000					mov DI, 0 
+						 
+ 01E4						LEFT_PADDLE_ROW: 
+ 01E4  8B 0E 0017 R					MOV CX, PADDLE_LEFT_X 
+ 01E8  BE 0000						MOV SI, 0 
+ 01EB							LEFT_PADDLE_COL: 
+							; Draw a pixel 
+ 01EB  B4 0C							MOV AH, 0Ch 
+ 01ED  B0 0F							MOV AL, 0Fh ; C
+				yan 
+ 01EF  B7 00							MOV BH, 00h 
+ 01F1  CD 10							INT 10h 
+								 
+ 01F3  41							INC CX 
+ 01F4  46							INC SI 
+ 01F5  3B 36 001F R						CMP SI, PADDLE_
+				WIDTH 
+ 01F9  72 F0							JB LEFT_PADDLE_
+				COL 
+							 
+ 01FB  42						INC DX 
+ 01FC  47						INC DI 
+ 01FD  3B 3E 0021 R					CMP DI, PADDLE_HEIGHT 
+ 0201  72 E1						JB LEFT_PADDLE_ROW 
+						 
+						; Right paddle 
+						 
+ 0203  8B 0E 001B R				MOV CX, PADDLE_RIGHT_X ; Start 
+				X 
+ 0207  8B 16 001D R				MOV DX, PADDLE_RIGHT_Y ; Start 
+				Y 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Page     1-10
+
+
+						 
+						; loop 
+ 020B  BE 0000					mov SI, 0 
+ 020E  BF 0000					mov DI, 0 
+						 
+ 0211						RIGHT_PADDLE_ROW: 
+ 0211  8B 0E 001B R					MOV CX, PADDLE_RIGHT_X 
+ 0215  BE 0000						MOV SI, 0 
+ 0218							RIGHT_PADDLE_COL: 
+							; Draw a pixel 
+ 0218  B4 0C							MOV AH, 0Ch 
+ 021A  B0 0F							MOV AL, 0Fh ; C
+				yan 
+ 021C  B7 00							MOV BH, 00h 
+ 021E  CD 10							INT 10h 
+								 
+ 0220  41							INC CX 
+ 0221  46							INC SI 
+ 0222  3B 36 001F R						CMP SI, PADDLE_
+				WIDTH 
+ 0226  72 F0							JB RIGHT_PADDLE
+				_COL 
+							 
+ 0228  42						INC DX 
+ 0229  47						INC DI 
+ 022A  3B 3E 0021 R					CMP DI, PADDLE_HEIGHT 
+ 022E  72 E1						JB RIGHT_PADDLE_ROW 
+						 
+ 0230  C3					RET 
+ 0231					DRAW_PADDLES ENDP 
+					 
+ 0231					CLEAR_SCREEN PROC NEAR 
+					 
+						; Setting video mode 
+ 0231  B4 00					MOV AH, 00h 
+ 0233  B0 13					MOV AL, 13h 
+ 0235  CD 10					INT 10h 
+						 
+						; Setting background color 
+ 0237  B4 0B					MOV AH, 0Bh 
+ 0239  B7 00					MOV BH, 00h 
+ 023B  B3 00					MOV BL, 00h ; Black 
+ 023D  CD 10					INT 10h 
+						 
+ 023F  C3					RET 
+ 0240					CLEAR_SCREEN ENDP 
+					 
+ 0240				CODE ENDS 
+				END 
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Symbols-1
+
+
+Segments and Groups:
+
+                N a m e         	Length	 Align	Combine Class
+
+CODE . . . . . . . . . . . . . .  	0240	PARA	NONE	'CODE'
+DATA . . . . . . . . . . . . . .  	0027	PARA	NONE	'DATA'
+STACK  . . . . . . . . . . . . .  	0040	PARA	STACK	
+
+Symbols:            
+
+                N a m e         	Type	 Value	 Attr
+
+BALL_COLOR . . . . . . . . . . .  	L WORD	000B	DATA
+BALL_ORIGINAL_X  . . . . . . . .  	L WORD	0007	DATA
+BALL_ORIGINAL_Y  . . . . . . . .  	L WORD	0009	DATA
+BALL_SIZE  . . . . . . . . . . .  	L WORD	0011	DATA
+BALL_VELOCITY_X  . . . . . . . .  	L WORD	0013	DATA
+BALL_VELOCITY_Y  . . . . . . . .  	L WORD	0015	DATA
+BALL_X . . . . . . . . . . . . .  	L WORD	000D	DATA
+BALL_Y . . . . . . . . . . . . .  	L WORD	000F	DATA
+
+CHECK_COLLISION_WITH_LEFT_PADDL   	L NEAR	00A5	CODE
+CHECK_COLLISION_WITH_RIGHT_PADD   	L NEAR	006C	CODE
+CHECK_LEFT_PADDLE_MOVEMENT . . .  	L NEAR	00FD	CODE
+CHECK_RIGHT_PADDLE_MOVEMENT  . .  	L NEAR	014A	CODE
+CHECK_TIME . . . . . . . . . . .  	L NEAR	000E	CODE
+CLEAR_SCREEN . . . . . . . . . .  	N PROC	0231	CODE	Length = 000F
+COL  . . . . . . . . . . . . . .  	L NEAR	01BD	CODE
+
+DRAW_BALL  . . . . . . . . . . .  	N PROC	01A8	CODE	Length = 002E
+DRAW_PADDLES . . . . . . . . . .  	N PROC	01D6	CODE	Length = 005B
+
+END_FUNC . . . . . . . . . . . .  	L NEAR	00F2	CODE
+END_PADDLE_FUNC  . . . . . . . .  	L NEAR	019A	CODE
+
+FIX_PADDLE_LEFT_BOTTON_POSITION   	L NEAR	0144	CODE
+FIX_PADDLE_LEFT_TOP_POSITION . .  	L NEAR	0123	CODE
+FIX_PADDLE_RIGHT_BOTTON_POSITIO   	L NEAR	0194	CODE
+FIX_PADDLE_RIGHT_TOP_POSITION  .  	L NEAR	0170	CODE
+
+GAME_FRAME . . . . . . . . . . .  	L NEAR	0018	CODE
+
+LEFT_PADDLE_COL  . . . . . . . .  	L NEAR	01EB	CODE
+LEFT_PADDLE_ROW  . . . . . . . .  	L NEAR	01E4	CODE
+
+MAIN . . . . . . . . . . . . . .  	F PROC	0000	CODE	Length = 002E
+MOVE_BALL  . . . . . . . . . . .  	N PROC	002E	CODE	Length = 00C5
+MOVE_LEFT_PADDLE_DOWN  . . . . .  	L NEAR	0129	CODE
+MOVE_LEFT_PADDLE_UP  . . . . . .  	L NEAR	0110	CODE
+MOVE_PADDLES . . . . . . . . . .  	N PROC	00F3	CODE	Length = 00A8
+MOVE_RIGHT_PADDLE_DOWN . . . . .  	L NEAR	0179	CODE
+MOVE_RIGHT_PADDLE_UP . . . . . .  	L NEAR	015D	CODE
+MOVE_X . . . . . . . . . . . . .  	L NEAR	002E	CODE
+MOVE_Y . . . . . . . . . . . . .  	L NEAR	004D	CODE
+Microsoft (R) Macro Assembler Version 5.00                  2/28/22 17:48:07
+                                                             Symbols-2
+
+
+
+NEG_VELOCITY_Y . . . . . . . . .  	L NEAR	00EB	CODE
+
+PADDLE_COLOR . . . . . . . . . .  	L WORD	0025	DATA
+PADDLE_HEIGHT  . . . . . . . . .  	L WORD	0021	DATA
+PADDLE_LEFT_X  . . . . . . . . .  	L WORD	0017	DATA
+PADDLE_LEFT_Y  . . . . . . . . .  	L WORD	0019	DATA
+PADDLE_RIGHT_X . . . . . . . . .  	L WORD	001B	DATA
+PADDLE_RIGHT_Y . . . . . . . . .  	L WORD	001D	DATA
+PADDLE_VELOCITY  . . . . . . . .  	L WORD	0023	DATA
+PADDLE_WIDTH . . . . . . . . . .  	L WORD	001F	DATA
+
+RESET_BALL_POSITION  . . . . . .  	N PROC	019B	CODE	Length = 000D
+RESET_POSITION . . . . . . . . .  	L NEAR	00E5	CODE
+RIGHT_PADDLE_COL . . . . . . . .  	L NEAR	0218	CODE
+RIGHT_PADDLE_ROW . . . . . . . .  	L NEAR	0211	CODE
+ROW  . . . . . . . . . . . . . .  	L NEAR	01B6	CODE
+
+TIME_AUX . . . . . . . . . . . .  	L BYTE	0006	DATA
+
+WINDOW_BOUNDS  . . . . . . . . .  	L WORD	0004	DATA
+WINDOW_HEIGHT  . . . . . . . . .  	L WORD	0002	DATA
+WINDOW_WIDTH . . . . . . . . . .  	L WORD	0000	DATA
+
+@FILENAME  . . . . . . . . . . .  	TEXT  pong		
+
+
+    436 Source  Lines
+    436 Total   Lines
+     58 Symbols
+
+  51250 + 448910 Bytes symbol space free
+
+      0 Warning Errors
+      3 Severe  Errors
