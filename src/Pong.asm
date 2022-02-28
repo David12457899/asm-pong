@@ -7,6 +7,7 @@ DATA SEGMENT PARA 'DATA'
 	; Ball properties, DB because using 16 bit registers
 	BALL_X DW 0Ah
 	BALL_Y DW 0Ah
+	BALL_SIZE DW 04h ; N x N
 	
 DATA ENDS
 
@@ -35,13 +36,7 @@ CODE SEGMENT PARA 'CODE'
 		MOV BL, 00h ; Black
 		INT 10h
 		
-		; Draw a pixel
-		MOV AH, 0Ch
-		MOV AL, 03h ; Cyan
-		MOV BH, 00h
-		MOV CX, BALL_X ; X
-		MOV DX, BALL_Y ; Y
-		INT 10h
+		CALL DRAW_BALL
 		
 		; Print A for debugging
 		;MOV DL, 'A'
@@ -50,6 +45,39 @@ CODE SEGMENT PARA 'CODE'
 		
 		RET
 	MAIN ENDP
+	
+	DRAW_BALL PROC NEAR
+		
+		MOV CX, BALL_X ; Start X
+		MOV DX, BALL_Y ; Start Y
+		
+		; For the loop
+		mov SI, 0
+		mov DI, 0
+		
+		ROW:
+			MOV CX, BALL_X
+			MOV SI, 0
+			COL:
+			; Draw a pixel
+				MOV AH, 0Ch
+				MOV AL, 03h ; Cyan
+				MOV BH, 00h
+				INT 10h
+				
+				INC CX
+				INC SI
+				CMP SI, BALL_SIZE
+				JB COL
+			
+			INC DX
+			INC DI
+			CMP DI, BALL_SIZE
+			JB ROW
+		
+		
+		RET
+	DRAW_BALL ENDP
 	
 CODE ENDS
 END
