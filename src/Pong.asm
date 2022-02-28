@@ -3,13 +3,27 @@ STACK SEGMENT PARA STACK
 STACK ENDS
 
 DATA SEGMENT PARA 'DATA'
+	
+	; Ball properties, DB because using 16 bit registers
+	BALL_X DW 0Ah
+	BALL_Y DW 0Ah
+	
 DATA ENDS
 
 CODE SEGMENT PARA 'CODE'
 	
 	MAIN PROC FAR
-		
-		
+	
+	; Moves DATA to the data segment
+	ASSUME CS:CODE, DS:DATA, SS:STACK
+	PUSH DS			
+	XOR AX, AX
+	PUSH AX
+	MOV AX, DATA
+	mov DS, AX
+	POP AX				
+	POP AX
+	
 		; Setting video mode
 		MOV AH, 00h
 		MOV AL, 13h
@@ -25,8 +39,8 @@ CODE SEGMENT PARA 'CODE'
 		MOV AH, 0Ch
 		MOV AL, 03h ; Cyan
 		MOV BH, 00h
-		MOV CX, 0Ah ; X
-		MOV DX, 0Ah ; Y
+		MOV CX, BALL_X ; X
+		MOV DX, BALL_Y ; Y
 		INT 10h
 		
 		; Print A for debugging
@@ -39,3 +53,4 @@ CODE SEGMENT PARA 'CODE'
 	
 CODE ENDS
 END
+
