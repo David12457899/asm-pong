@@ -33,11 +33,11 @@ DATA SEGMENT PARA 'DATA'
 	; Paddle properties
 	PADDLE_LEFT_X DW 0Ah;
 	PADDLE_LEFT_Y DW 0Ah;
-	PADDLE_LEFT_POINTS DB 0; points of the left player
+	PLAYER_ONE_POINTS DB 0; points of the left player
 	
 	PADDLE_RIGHT_X DW 130h;
 	PADDLE_RIGHT_Y DW 0Ah;
-	PADDLE_RIGHT_POINTS DB 0; points of the right player
+	PLAYER_TWO_POINTS DB 0; points of the right player
 	
 	PADDLE_WIDTH DW 05h;
 	PADDLE_HEIGHT DW 1Fh;
@@ -118,26 +118,32 @@ CODE SEGMENT PARA 'CODE'
 		
 		; Increment points of round winner
 		GIVE_POINT_TO_PLAYER_ONE:
-			INC PADDLE_LEFT_POINTS
+			INC PLAYER_ONE_POINTS
 			CALL RESET_BALL_POSITION
 			
+			CALL UPDATE_TEXT_PLAYER_ONE_POINTS
+			
 			; Check if player 1 has reached max points
-			CMP PADDLE_LEFT_POINTS, 5 ; comparing to the max game points
+			CMP PLAYER_ONE_POINTS, 5 ; comparing to the max game points
 			JGE GAME_OVER
 			RET
 			
 		GIVE_POINT_TO_PLAYER_TWO:
-			INC PADDLE_RIGHT_POINTS
+			INC PLAYER_TWO_POINTS
 			CALL RESET_BALL_POSITION
 			
+			CALL UPDATE_TEXT_PLAYER_TWO_POINTS
+			
 			; Check if player 2 has reached max points
-			CMP PADDLE_RIGHT_POINTS, 5 ; comparing to the max game points
+			CMP PLAYER_TWO_POINTS, 5 ; comparing to the max game points
 			JGE GAME_OVER
+			CALL UPDATE_TEXT_PLAYER_ONE_POINTS
+			CALL UPDATE_TEXT_PLAYER_TWO_POINTS
 			RET
 		
 		GAME_OVER:
-			MOV PADDLE_LEFT_POINTS, 00h
-			MOV PADDLE_RIGHT_POINTS, 00h
+			MOV PLAYER_ONE_POINTS, 00h
+			MOV PLAYER_TWO_POINTS, 00h
 			RET
 		
 		MOVE_Y:
@@ -482,6 +488,30 @@ CODE SEGMENT PARA 'CODE'
 		
 		RET
 	DRAW_UI ENDP
+	
+	UPDATE_TEXT_PLAYER_ONE_POINTS PROC NEAR
+		
+		XOR AX, AX
+		MOV AL, PLAYER_ONE_POINTS
+		
+		; Convert from number to ascii number like adding '0' in c
+		ADD AL, 30h
+		MOV [TEXT_PLAYER_ONE_POINTS], AL
+		
+		RET
+	UPDATE_TEXT_PLAYER_ONE_POINTS ENDP
+	
+	UPDATE_TEXT_PLAYER_TWO_POINTS PROC NEAR
+		
+		XOR AX, AX
+		MOV AL, PLAYER_TWO_POINTS
+		
+		; Convert from number to ascii number like adding '0' in c
+		ADD AL, 30h
+		MOV [TEXT_PLAYER_TWO_POINTS], AL
+		
+		RET
+	UPDATE_TEXT_PLAYER_TWO_POINTS ENDP
 	
 	CLEAR_SCREEN PROC NEAR
 	
