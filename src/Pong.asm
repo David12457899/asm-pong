@@ -133,18 +133,17 @@ CODE SEGMENT PARA 'CODE'
 	
 	MOVE_PADDLES PROC NEAR
 		
-		; Left paddle
+		; Check if key is pressed
+		MOV AH, 01h
+		INT 16h
+		JZ CHECK_RIGHT_PADDLE_MOVEMENT
 		
+		; Check which key is pressed
+		MOV AH, 00h
+		INT 16h
+		
+		; Left paddle
 		CHECK_LEFT_PADDLE_MOVEMENT:
-			; Check if key is pressed
-			MOV AH, 01h
-			INT 16h
-			JZ CHECK_RIGHT_PADDLE_MOVEMENT
-			
-			; Check which key is pressed
-			MOV AH, 00h
-			INT 16h
-			
 			; Moving the paddle up
 			CMP AL, 77h ; 'w'
 			JE MOVE_LEFT_PADDLE_UP
